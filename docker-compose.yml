@@ -1,0 +1,29 @@
+services:
+  # Наш ETL-пайплайн
+  etl-pipeline:
+    build: .
+    container_name: etl-pipeline
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - S3_ENDPOINT_URL=http://localstack:4566
+    depends_on:
+      - localstack
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+
+  # Эмулятор S3 (LocalStack)
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+    volumes:
+      - localstack_data:/var/lib/localstack
+
+volumes:
+  localstack_data:
