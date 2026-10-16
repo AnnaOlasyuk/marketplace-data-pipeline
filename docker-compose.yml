@@ -1,29 +1,50 @@
 services:
-  # Наш ETL-пайплайн
-  etl-pipeline:
-    build: .
-    container_name: etl-pipeline
+  moto:
+    image: motoserver/moto:latest
+    container_name: moto
+    command: -H 0.0.0.0 -p 4566  # <-- ИСПРАВЛЕНО: убрали лишнее "moto_server s3"
+    ports:
+      - "4566:4566"
+    networks:
+      - pipeline-net
+
+  etl-extract:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: etl-extract
+    command: python src/extract.py
+    depends_on:
+      - moto
     environment:
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
-      - S3_ENDPOINT_URL=http://localstack:4566
-    depends_on:
-      - localstack
+      - S3_ENDPOINT_URL=http://moto:4566
     volumes:
       - ./src:/app/src
       - ./data:/app/data
+    networks:
+      - pipeline-net
 
-  # Эмулятор S3 (LocalStack)
-  localstack:
-    image: localstack/localstack:3.0
-    container_name: localstack
-    ports:
-      - "4566:4566"
+  etl-transform:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: etl-transform
+    command: python src/transform.py
+    depends_on:
+      - etl-extract
     environment:
-      - SERVICES=s3
-      - DEBUG=1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - S3_ENDPOINT_URL=http://moto:4566
+      - PYSPARK_PYTHON=python3
     volumes:
-      - localstack_data:/var/lib/localstack
+      - ./src:/app/src
+      - ./data:/app/data
+    networks:
+      - pipeline-net
 
-volumes:
-  localstack_data:
+networks:
+  pipeline-net:
+    driver: bridge
