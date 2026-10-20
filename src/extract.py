@@ -1,4 +1,7 @@
 import os
+from dotenv import load_dotenv  # ← ДОБАВИТЬ
+load_dotenv()                    # ← ДОБАВИТЬ
+
 import boto3
 
 s3_client = boto3.client(
