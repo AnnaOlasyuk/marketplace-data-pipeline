@@ -1,9 +1,12 @@
-product_id,category,price,quantity
-1,electronics,999.99,10
-2,clothing,49.99,50
-3,electronics,1299.99,5
-4,food,9.99,100
-5,clothing,79.99,30
-6,food,14.99,80
-7,electronics,599.99,15
-8,food,4.99,200
+category,product,price
+electronics,Phone,599.99
+electronics,Laptop,1299.99
+electronics,Tablet,399.99
+food,Apple,4.99
+food,Banana,2.99
+food,Orange,6.99
+clothing,T-Shirt,29.99
+clothing,Jeans,79.99
+,Unknown Product,100.00
+electronics,Broken Item,-50.00
+food,Free Sample,0
