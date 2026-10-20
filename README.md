@@ -1,11 +1,37 @@
 # Marketplace Data Pipeline (S3 ETL)
 
-Локальный ETL-пайплайн для имитации загрузки сырых данных маркетплейса в объектное хранилище (S3). Проект демонстрирует навыки работы с AWS S3 API, контейнеризацией и структурированием кода.
+ETL-пайплайн для обработки данных маркетплейса с использованием PySpark и Docker.
 
-## Архитектура
-```text
-[Локальные CSV данные] 
-       ↓ (boto3)
-[S3 Emulator (Moto / LocalStack)] 
-       ↓ (PySpark - в разработке)
-[Обработанные данные (Parquet)]
+
+## Что реализовано
+
+- **Extract**: загрузка CSV в S3 через boto3
+- **Transform**: агрегация данных по категориям с проверкой качества
+- **Data Quality**: фильтрация записей с отрицательной/нулевой ценой и пустыми категориями
+- **Logging**: профессиональное логирование вместо print
+- **Config**: вынесено в .env (12-Factor App)
+- **Tests**: unit-тесты на pytest
+
+## Технологии
+
+- Python 3.10
+- PySpark 3.5.0
+- Docker
+- boto3
+- pytest
+- python-dotenv
+
+
+## Запуск
+```bash
+docker-compose build
+docker-compose up
+```
+
+## Тесты
+```bash
+docker-compose run --rm etl-transform python -m pytest tests/ -v 
+```
+
+**Автор**:`Anna Olasyuk`
+GitHub: github.com/AnnaOlasyuk
