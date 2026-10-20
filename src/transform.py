@@ -7,6 +7,9 @@ import logging
 import os
 from datetime import datetime
 
+from dotenv import load_dotenv 
+load_dotenv()               
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, avg, count, min, max, sum
 
@@ -152,6 +155,8 @@ def main():
         
     except Exception as e:
         logger.exception("Критическая ошибка в Transform-слое. Пайплайн остановлен.")
+
+
         raise
     finally:
         if 'spark' in locals():

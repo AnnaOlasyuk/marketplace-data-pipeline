@@ -13,7 +13,8 @@ RUN pip install --no-cache-dir \
     pyspark==3.5.0 \
     boto3 \
     pandas \
-    moto[server]
+    moto[server] \
+    python-dotenv
 
 # Рабочая директория внутри контейнера
 WORKDIR /app

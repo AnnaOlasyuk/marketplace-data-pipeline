@@ -2,7 +2,7 @@ services:
   moto:
     image: motoserver/moto:latest
     container_name: moto
-    command: -H 0.0.0.0 -p 4566  # <-- ИСПРАВЛЕНО: убрали лишнее "moto_server s3"
+    command: -H 0.0.0.0 -p 4566
     ports:
       - "4566:4566"
     networks:
@@ -16,10 +16,6 @@ services:
     command: python src/extract.py
     depends_on:
       - moto
-    environment:
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-      - S3_ENDPOINT_URL=http://moto:4566
     volumes:
       - ./src:/app/src
       - ./data:/app/data
@@ -34,11 +30,6 @@ services:
     command: python src/transform.py
     depends_on:
       - etl-extract
-    environment:
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-      - S3_ENDPOINT_URL=http://moto:4566
-      - PYSPARK_PYTHON=python3
     volumes:
       - ./src:/app/src
       - ./data:/app/data
