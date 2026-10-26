@@ -1,1 +1,7 @@
+data/
+__pycache__/
+*.pyc
+*.log
 .env
+airflow.db
+webserver_config.py

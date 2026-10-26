@@ -1,0 +1,38 @@
+[
+  {
+    "date": "2023-10-20T10:15:30Z",
+    "lastChangeDate": "2023-10-20T10:20:00Z",
+    "warehouseName": "Коледино",
+    "countryName": "Россия",
+    "oblastOkrugName": "Московская область",
+    "regionName": "Москва",
+    "supplierArticle": "WB-ART-001",
+    "nmId": 154321098,
+    "brand": "Мой Бренд",
+    "tsName": "Футболка оверсайз",
+    "price": 1500,
+    "discountPercent": 20,
+    "isSupply": true,
+    "isRealization": true,
+    "totalPrice": 1200,
+    "sticker": "1234567890123"
+  },
+  {
+    "date": "2023-10-21T14:00:00Z",
+    "lastChangeDate": "2023-10-21T14:05:00Z",
+    "warehouseName": "Электросталь",
+    "countryName": "Россия",
+    "oblastOkrugName": "Московская область",
+    "regionName": "Москва",
+    "supplierArticle": "WB-ART-002",
+    "nmId": 987654321,
+    "brand": "Мой Бренд",
+    "tsName": "Джинсы прямые",
+    "price": 3500,
+    "discountPercent": 10,
+    "isSupply": true,
+    "isRealization": true,
+    "totalPrice": 3150,
+    "sticker": "9876543210987"
+  }
+]

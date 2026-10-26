@@ -1,41 +1,14 @@
 services:
-  moto:
-    image: motoserver/moto:latest
-    container_name: moto
-    command: -H 0.0.0.0 -p 4566
+  airflow:
+    build: .
+    container_name: airflow-standalone
     ports:
-      - "4566:4566"
-    networks:
-      - pipeline-net
-
-  etl-extract:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    container_name: etl-extract
-    command: python src/extract.py
-    depends_on:
-      - moto
+      - "8080:8080"
     volumes:
-      - ./src:/app/src
-      - ./data:/app/data
-    networks:
-      - pipeline-net
-
-  etl-transform:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    container_name: etl-transform
-    command: python src/transform.py
-    depends_on:
-      - etl-extract
-    volumes:
-      - ./src:/app/src
-      - ./data:/app/data
-    networks:
-      - pipeline-net
-
-networks:
-  pipeline-net:
-    driver: bridge
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    command: standalone
+    restart: unless-stopped
