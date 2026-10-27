@@ -4,9 +4,11 @@ from datetime import datetime, timedelta
 import sys
 import os
 
+# Добавляем папку src в путь, чтобы импортировать наши скрипты
 sys.path.append('/opt/airflow/src')
 
 from extract import extract_wb_sales
+from load_clickhouse import load_to_clickhouse
 
 default_args = {
     'owner': 'Anna Olasyuk',
@@ -17,26 +19,33 @@ default_args = {
 with DAG(
     dag_id='wildberries_etl_pipeline',
     default_args=default_args,
-    description='ETL пайплайн для выгрузки и обработки данных Wildberries',
+    description='ETL пайплайн: Wildberries API -> JSON -> ClickHouse',
     schedule_interval='@daily',
     start_date=datetime(2023, 10, 20),
     catchup=False,
-    tags=['wildberries', 'etl', 'api', 'marketplace', 'portfolio'],
+    tags=['wildberries', 'etl', 'clickhouse', 'portfolio'],
 ) as dag:
 
+    # Задача 1: Выгрузка (Extract)
     extract_task = PythonOperator(
         task_id='extract_wb_sales',
         python_callable=extract_wb_sales,
         op_kwargs={
-            'api_key': None,  # Пока используем mock, ключ не нужен
+            'api_key': '{{ var.value.get("wb_api_key", "mock_token") }}',
             'days_ago': 7,
-            'use_mock': True  # Mock-режим для стабильности
+            'use_mock': True # Пока используем мок-данные
         },
     )
 
-    transform_task = PythonOperator(
-        task_id='transform_wb_data',
-        python_callable=lambda: print("Этап трансформации будет добавлен следующим шагом"),
+    # Задача 2: Загрузка в ClickHouse (Load)
+    # Для простоты пока пропускаем Transform, но в будущем добавим
+    load_task = PythonOperator(
+        task_id='load_to_clickhouse',
+        python_callable=load_to_clickhouse,
+        op_kwargs={
+            'json_file_path': '/opt/airflow/data/raw/wb_sales_mock.json'
+        },
     )
 
-    extract_task >> transform_task
+    # Настраиваем порядок выполнения
+    extract_task >> load_task

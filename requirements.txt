@@ -1,5 +1,17 @@
-   pyspark==3.5.0
-   pandas>=2.0.0
-   pyarrow>=12.0.0
-   python-dotenv>=1.0.0
-   requests>=2.31.0
+# Базовые библиотеки
+requests>=2.31.0
+pandas>=2.0.0
+python-dotenv>=1.0.0
+
+# Драйверы для баз данных
+psycopg2-binary>=2.9.9
+clickhouse-driver>=0.2.6
+
+# Тяжелые библиотеки для трансформации (для локального запуска)
+pyspark==3.5.0
+pyarrow>=12.0.0
+boto3>=1.28.0
+
+# Тестирование
+pytest>=7.4.0
+moto[server]>=4.2.0
