@@ -1,5 +1,4 @@
 services:
-  # 1. База данных для самого Airflow (PostgreSQL)
   postgres:
     image: postgres:15
     container_name: marketplace_postgres
@@ -13,7 +12,6 @@ services:
       - "5432:5432"
     restart: always
 
-  # 2. Аналитическая база данных (ClickHouse)
   clickhouse:
     image: clickhouse/clickhouse-server:latest
     container_name: marketplace_clickhouse
@@ -22,13 +20,13 @@ services:
       - "9000:9000"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse-config/users.xml:/etc/clickhouse-server/users.d/users.xml
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
     restart: always
 
-  # 3. Оркестратор Airflow
   airflow:
     build: .
     container_name: airflow_standalone

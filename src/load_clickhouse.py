@@ -46,10 +46,12 @@ def load_to_clickhouse(json_file_path: str):
     rows_to_insert = []
     for item in data:
         try:
-            date_str = item.get('date', '1970-01-01')[:10] 
+            # Преобразуем строку в объект даты, который понимает ClickHouse
+            date_str = item.get('date', '1970-01-01')[:10]
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
             
             row = (
-                date_str,
+                date_obj,  # <-- было date_str, стало date_obj
                 item.get('supplier_article', ''),
                 item.get('tech_size', ''),
                 item.get('barcode', ''),
@@ -83,6 +85,20 @@ def load_to_clickhouse(json_file_path: str):
         print("⚠️ Нет данных для загрузки.")
 
 if __name__ == "__main__":
-    # Для локального теста вне Docker раскомментируй строку ниже и закомментируй верхнюю
-    # client = Client(host='localhost', port=9000, user='default', password='')
-    load_to_clickhouse('data/raw/wb_sales_mock.json') 
+    import glob
+    import os
+    
+    # Ищем все JSON файлы в папке data/raw (относительный путь работает, т.к. мы в /opt/airflow)
+    files = glob.glob('data/raw/*.json')
+    
+    if not files:
+        print("❌ В папке data/raw нет ни одного JSON файла! Сначала запусти задачу Extract.")
+    else:
+        # Находим самый свежий файл по времени изменения
+        latest_file = max(files, key=os.path.getmtime)
+        print(f"📂 Найден последний файл для загрузки: {latest_file}")
+        
+        # Вызываем функцию загрузки с правильным путем
+        load_to_clickhouse(latest_file)
+
+   

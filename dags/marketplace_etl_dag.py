@@ -38,12 +38,11 @@ with DAG(
     )
 
     # Задача 2: Загрузка в ClickHouse (Load)
-    # Для простоты пока пропускаем Transform, но в будущем добавим
     load_task = PythonOperator(
         task_id='load_to_clickhouse',
         python_callable=load_to_clickhouse,
         op_kwargs={
-            'json_file_path': '/opt/airflow/data/raw/wb_sales_mock.json'
+            'json_file_path': '/opt/airflow/data/raw/wb_sales_20261029.json'  # Актуальное имя файла
         },
     )
 
