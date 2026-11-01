@@ -6,6 +6,7 @@ from datetime import datetime
 def load_to_clickhouse(json_file_path: str):
     """
     Загружает данные из JSON файла в ClickHouse.
+    Путь к файлу передается через XCom от задачи extract_wb_sales.
     """
     # Подключаемся к ClickHouse. 
     # 'clickhouse' - это имя сервиса из docker-compose.yml
@@ -51,7 +52,7 @@ def load_to_clickhouse(json_file_path: str):
             date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
             
             row = (
-                date_obj,  # <-- было date_str, стало date_obj
+                date_obj,
                 item.get('supplier_article', ''),
                 item.get('tech_size', ''),
                 item.get('barcode', ''),
@@ -83,22 +84,3 @@ def load_to_clickhouse(json_file_path: str):
         print("✅ Успешно загружено в ClickHouse!")
     else:
         print("⚠️ Нет данных для загрузки.")
-
-if __name__ == "__main__":
-    import glob
-    import os
-    
-    # Ищем все JSON файлы в папке data/raw (относительный путь работает, т.к. мы в /opt/airflow)
-    files = glob.glob('data/raw/*.json')
-    
-    if not files:
-        print("❌ В папке data/raw нет ни одного JSON файла! Сначала запусти задачу Extract.")
-    else:
-        # Находим самый свежий файл по времени изменения
-        latest_file = max(files, key=os.path.getmtime)
-        print(f"📂 Найден последний файл для загрузки: {latest_file}")
-        
-        # Вызываем функцию загрузки с правильным путем
-        load_to_clickhouse(latest_file)
-
-   

@@ -5,6 +5,8 @@ import shutil
 from datetime import datetime, timedelta
 import logging
 
+# Настраиваем логирование
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def ensure_mock_file_exists():
     """
@@ -61,12 +63,9 @@ def ensure_mock_file_exists():
         logging.info(f"Файл создан: {mock_path}")
 
 
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
 def extract_wb_sales(api_key: str = None, days_ago: int = 7, use_mock: bool = False):
     """
-    Выгружает данные о заказах. 
+    Выгружает данные о заказах.
     Если use_mock=True, использует локальный файл-имитацию.
     """
     os.makedirs("data/raw", exist_ok=True)
@@ -81,6 +80,8 @@ def extract_wb_sales(api_key: str = None, days_ago: int = 7, use_mock: bool = Fa
         mock_path = os.path.join(os.path.dirname(__file__), "mock_wb_response.json")
         shutil.copy(mock_path, filename)
         logging.info(f"✅ Mock-данные успешно скопированы в {filename}")
+        
+        # ⭐ МАГИЯ XCOM: Возвращаем имя файла, чтобы следующая задача его забрала
         return filename
 
     # --- РЕЖИМ РЕАЛЬНОГО API ---
@@ -109,6 +110,8 @@ def extract_wb_sales(api_key: str = None, days_ago: int = 7, use_mock: bool = Fa
             json.dump(data, f, ensure_ascii=False, indent=2)
             
         logging.info(f"Реальные данные успешно сохранены в {filename}. Записей: {len(data)}")
+        
+        # ⭐ МАГИЯ XCOM: Возвращаем имя файла, чтобы следующая задача его забрала
         return filename
         
     except requests.exceptions.HTTPError as http_err:
@@ -117,6 +120,7 @@ def extract_wb_sales(api_key: str = None, days_ago: int = 7, use_mock: bool = Fa
     except Exception as err:
         logging.error(f"❌ Ошибка: {err}")
         raise
+
 
 if __name__ == "__main__":
     # Для локального теста включаем MOCK режим по умолчанию

@@ -33,16 +33,18 @@ with DAG(
         op_kwargs={
             'api_key': '{{ var.value.get("wb_api_key", "mock_token") }}',
             'days_ago': 7,
-            'use_mock': True # Пока используем мок-данные
+            'use_mock': True  # Пока используем мок-данные
         },
     )
 
     # Задача 2: Загрузка в ClickHouse (Load)
+    # ⭐ ИСПОЛЬЗУЕМ XCOM для получения имени файла от extract_task
     load_task = PythonOperator(
         task_id='load_to_clickhouse',
         python_callable=load_to_clickhouse,
         op_kwargs={
-            'json_file_path': '/opt/airflow/data/raw/wb_sales_20261029.json'  # Актуальное имя файла
+            # Airflow автоматически подставит значение, которое вернула extract_wb_sales
+            'json_file_path': "{{ ti.xcom_pull(task_ids='extract_wb_sales') }}"
         },
     )
 
