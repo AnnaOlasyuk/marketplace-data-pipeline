@@ -1,7 +1,11 @@
 import json
 import os
+import logging
 from clickhouse_driver import Client
 from datetime import datetime
+
+# Настраиваем логирование
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def load_to_clickhouse(json_file_path: str):
     """
@@ -32,12 +36,12 @@ def load_to_clickhouse(json_file_path: str):
     ORDER BY (date, supplier_article)
     """
     
-    print("🛠 Создаем таблицу в ClickHouse...")
+    logging.info("🛠 Создаем таблицу в ClickHouse...")
     client.execute(create_table_query)
 
     # 2. Читаем данные из JSON
     if not os.path.exists(json_file_path):
-        print(f"❌ Файл {json_file_path} не найден! (Возможно, сначала нужно запустить Extract)")
+        logging.error(f"❌ Файл {json_file_path} не найден! (Возможно, сначала нужно запустить Extract)")
         return
 
     with open(json_file_path, 'r', encoding='utf-8') as f:
@@ -68,7 +72,7 @@ def load_to_clickhouse(json_file_path: str):
             )
             rows_to_insert.append(row)
         except Exception as e:
-            print(f"Ошибка обработки строки: {e}")
+            logging.error(f"Ошибка обработки строки: {e}")
 
     # 4. Вставляем данные
     if rows_to_insert:
@@ -79,8 +83,8 @@ def load_to_clickhouse(json_file_path: str):
             category, brand, is_cancel
         ) VALUES
         """
-        print(f"🚀 Загружаем {len(rows_to_insert)} строк в ClickHouse...")
+        logging.info(f"🚀 Загружаем {len(rows_to_insert)} строк в ClickHouse...")
         client.execute(insert_query, rows_to_insert)
-        print("✅ Успешно загружено в ClickHouse!")
+        logging.info("✅ Успешно загружено в ClickHouse!")
     else:
-        print("⚠️ Нет данных для загрузки.")
+        logging.warning("⚠️ Нет данных для загрузки.")
