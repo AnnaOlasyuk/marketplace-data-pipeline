@@ -1,7 +1,20 @@
-data/
+# Исключаем файлы данных, но оставляем структуру папок
+data/raw/*.csv
+data/raw/*.json
+data/raw/*.parquet
+data/raw/*.zip
+
+# Оставляем .gitkeep, чтобы Git отслеживал папку
+!data/raw/.gitkeep
+
+# Остальное оставляем как есть
 __pycache__/
 *.pyc
 *.log
 .env
 airflow.db
 webserver_config.py
+
+# Добавляем для Kaggle (если будешь использовать API)
+.kaggle/
+kaggle.json
