@@ -1,81 +1,145 @@
 import json
 import os
 import logging
+from datetime import date, datetime      # ✅ ДОБАВЛЕНО date
+from typing import Iterator, Tuple
+
+from pydantic import BaseModel, ValidationError, field_validator
 from clickhouse_driver import Client
-from datetime import datetime
+from airflow.hooks.base import BaseHook
 
 # Настраиваем логирование
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def load_to_clickhouse(json_file_path: str):
+# ==========================================
+# 1. Схема данных (Pydantic)
+# ==========================================
+class WBSalesItem(BaseModel):
     """
-    Загружает данные из JSON файла в ClickHouse.
-    Путь к файлу передается через XCom от задачи extract_wb_sales.
+    Pydantic модель для валидации и автоматического приведения типов.
     """
-    # Подключаемся к ClickHouse. 
-    # 'clickhouse' - это имя сервиса из docker-compose.yml
-    client = Client(host='clickhouse', port=9000, user='default', password='')
+    date: date                            # ✅ ТЕПЕРЬ date, а не datetime.date
+    supplier_article: str = ""
+    tech_size: str = ""
+    barcode: str = ""
+    total_price: float = 0.0
+    discount_percent: int = 0
+    warehouse_name: str = ""
+    oblast: str = ""
+    nm_id: int = 0
+    subject: str = ""
+    category: str = ""
+    brand: str = ""
+    is_cancel: bool = False
 
-    # 1. Создаем таблицу, если её нет
-    create_table_query = """
-    CREATE TABLE IF NOT EXISTS wb_sales (
-        date Date,
-        supplier_article String,
-        tech_size String,
-        barcode String,
-        total_price Float64,
-        discount_percent Int32,
-        warehouse_name String,
-        oblast String,
-        nm_id Int64,
-        subject String,
-        category String,
-        brand String,
-        is_cancel Boolean
-    ) ENGINE = MergeTree()
-    ORDER BY (date, supplier_article)
-    """
-    
-    logging.info("🛠 Создаем таблицу в ClickHouse...")
-    client.execute(create_table_query)
+    @field_validator('date', mode='before')
+    @classmethod
+    def parse_custom_date(cls, v):
+        """Безопасный парсер даты: обрезает время, если API отдает datetime."""
+        if isinstance(v, str):
+            return v[:10] # Оставляем только YYYY-MM-DD
+        return v
 
-    # 2. Читаем данные из JSON
-    if not os.path.exists(json_file_path):
-        logging.error(f"❌ Файл {json_file_path} не найден! (Возможно, сначала нужно запустить Extract)")
-        return
-
-    with open(json_file_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-
-    # 3. Подготавливаем данные для вставки
-    rows_to_insert = []
-    for item in data:
-        try:
-            # Преобразуем строку в объект даты, который понимает ClickHouse
-            date_str = item.get('date', '1970-01-01')[:10]
-            date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+# ==========================================
+# 2. Потоковое чтение и валидация
+# ==========================================
+def _read_and_validate_ndjson(file_path: str) -> Iterator[Tuple]:
+    """Генератор: читает NDJSON, валидирует через Pydantic и отдает кортежи для ClickHouse."""
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line_num, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
             
-            row = (
-                date_obj,
-                item.get('supplier_article', ''),
-                item.get('tech_size', ''),
-                item.get('barcode', ''),
-                float(item.get('total_price', 0)),
-                int(item.get('discount_percent', 0)),
-                item.get('warehouse_name', ''),
-                item.get('oblast', ''),
-                int(item.get('nm_id', 0)),
-                item.get('subject', ''),
-                item.get('category', ''),
-                item.get('brand', ''),
-                bool(item.get('is_cancel', False))
-            )
-            rows_to_insert.append(row)
-        except Exception as e:
-            logging.error(f"Ошибка обработки строки: {e}")
+            try:
+                item_dict = json.loads(line)
+                # Магия Pydantic: автоматически парсит строки во float, int, date и bool
+                item = WBSalesItem(**item_dict)
+                
+                # Собираем кортеж строго в том порядке, в котором указаны колонки в INSERT
+                yield (
+                    item.date,
+                    item.supplier_article,
+                    item.tech_size,
+                    item.barcode,
+                    item.total_price,
+                    item.discount_percent,
+                    item.warehouse_name,
+                    item.oblast,
+                    item.nm_id,
+                    item.subject,
+                    item.category,
+                    item.brand,
+                    item.is_cancel
+                )
+            except ValidationError as e:
+                logging.warning(f"⚠️ Строка {line_num} не прошла валидацию схемы: {e.errors()}")
+            except json.JSONDecodeError:
+                logging.warning(f"⚠️ Строка {line_num}: битый JSON.")
+            except Exception as e:
+                logging.error(f"❌ Непредвиденная ошибка на строке {line_num}: {e}")
 
-    # 4. Вставляем данные
-    if rows_to_insert:
+# ==========================================
+# 3. Основная функция загрузки
+# ==========================================
+def load_to_clickhouse(json_file_path: str, **kwargs):
+    """
+    Загружает данные в ClickHouse.
+    Принимает **kwargs, чтобы получить контекст Airflow (например, ds - дату запуска).
+    """
+    # 1. Получаем дату выполнения DAG'а для идемпотентности (формат YYYY-MM-DD)
+    ds = kwargs.get('ds', datetime.now().strftime('%Y-%m-%d'))
+
+    # 2. Безопасное получение кредов из Airflow Connections
+    try:
+        # 'clickhouse_default' - это Conn Id, который ты создашь в UI Airflow (Admin -> Connections)
+        conn = BaseHook.get_connection('clickhouse_default')
+        client = Client(
+            host=conn.host or 'clickhouse',
+            port=int(conn.port or 9000),
+            user=conn.login or 'default',
+            password=conn.password or ''   # ✅ пустое поле в Airflow = None, а драйверу нужна строка
+        )
+    except Exception as e:
+        logging.error(f"Не удалось получить подключение из Airflow: {e}. Падаем.")
+        raise
+
+    try:
+        # 3. Создаем таблицу (если её нет)
+        # Добавили PARTITION BY toYYYYMM(date) — это ускорит удаление старых данных и запросы
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS wb_sales (
+            date Date, 
+            supplier_article String, 
+            tech_size String, 
+            barcode String,
+            total_price Float64, 
+            discount_percent Int32, 
+            warehouse_name String,
+            oblast String, 
+            nm_id Int64, 
+            subject String, 
+            category String,
+            brand String, 
+            is_cancel Boolean
+        ) ENGINE = MergeTree()
+        PARTITION BY toYYYYMM(date)
+        ORDER BY (date, supplier_article)
+        """
+        logging.info("🛠 Проверяем/создаем таблицу в ClickHouse...")
+        client.execute(create_table_query)
+
+        # 4. ИДЕМПОТЕНТНОСТЬ: Удаляем данные за текущий день перед загрузкой
+        # Если Airflow перезапустит таску, мы не создадим дублей.
+        # SETTINGS mutations_sync = 1 заставляет ClickHouse ждать выполнения удаления
+        delete_query = f"""
+        ALTER TABLE wb_sales DELETE WHERE date = '{ds}'
+        SETTINGS mutations_sync = 1
+        """
+        logging.info(f"🧹 Чистим старые данные за {ds} (обеспечиваем идемпотентность)...")
+        client.execute(delete_query)
+
+        # 5. Чтение и батчевая вставка
         insert_query = """
         INSERT INTO wb_sales (
             date, supplier_article, tech_size, barcode, total_price, 
@@ -83,8 +147,30 @@ def load_to_clickhouse(json_file_path: str):
             category, brand, is_cancel
         ) VALUES
         """
-        logging.info(f"🚀 Загружаем {len(rows_to_insert)} строк в ClickHouse...")
-        client.execute(insert_query, rows_to_insert)
-        logging.info("✅ Успешно загружено в ClickHouse!")
-    else:
-        logging.warning("⚠️ Нет данных для загрузки.")
+
+        batch = []
+        total_inserted = 0
+        batch_size = 50_000
+        
+        logging.info("🚀 Начинаем загрузку...")
+        for row in _read_and_validate_ndjson(json_file_path):
+            batch.append(row)
+
+            if len(batch) >= batch_size:
+                client.execute(insert_query, batch)
+                total_inserted += len(batch)
+                logging.info(f"✅ Загружено {total_inserted} строк...")
+                batch = []
+
+        # Отправляем "хвостик"
+        if batch:
+            client.execute(insert_query, batch)
+            total_inserted += len(batch)
+
+        logging.info(f"🎉 УСПЕХ! Всего загружено в ClickHouse: {total_inserted} строк за {ds}.")
+
+    except Exception as e:
+        logging.error(f"❌ Критическая ошибка при работе с ClickHouse: {e}")
+        raise
+    finally:
+        client.disconnect()
