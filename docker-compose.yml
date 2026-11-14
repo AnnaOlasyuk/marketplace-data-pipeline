@@ -37,13 +37,17 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow_password@postgres:5432/airflow_db
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW_ADMIN_USER=${AIRFLOW_ADMIN_USER}
+      - AIRFLOW_ADMIN_EMAIL=${AIRFLOW_ADMIN_EMAIL}
+      - AIRFLOW_ADMIN_PASSWORD=${AIRFLOW_ADMIN_PASSWORD}
     ports:
       - "8080:8080"
     volumes:
       - ./dags:/opt/airflow/dags
       - ./src:/opt/airflow/src
       - ./data:/opt/airflow/data
-    command: standalone
+      - ./webserver_config.py:/opt/airflow/webserver_config.py 
+    command: bash -c "airflow db migrate && airflow standalone"
     restart: always
 
 volumes:
