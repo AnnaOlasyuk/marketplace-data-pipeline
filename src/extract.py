@@ -86,13 +86,16 @@ def extract_wb_sales(**context):
         logging.info("✂️ Ограничиваем до 10 000 строк для теста")
         data = data[:10000]
 
-    # Сохраняем в JSON
+    # Сохраняем в формате NDJSON (Newline Delimited JSON) для потокового чтения
     filename = f"data/raw/wb_sales_{datetime.now().strftime('%Y%m%d')}.json"
     os.makedirs("data/raw", exist_ok=True)
     
+    logging.info(f"💾 Сохраняем JSON в формате NDJSON: {filename}")
     with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-        
-    logging.info(f"💾 JSON сохранен: {filename}")
+        for item in data:
+            # Пишем каждый словарь как отдельную строку
+            f.write(json.dumps(item, ensure_ascii=False) + '\n')
+            
+    logging.info(f"💾 JSON успешно сохранен: {filename}")
     
     return filename
