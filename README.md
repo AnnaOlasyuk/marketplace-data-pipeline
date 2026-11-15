@@ -80,11 +80,25 @@ docker-compose exec airflow python -m pytest tests/ -v
 ├── dags/                  # DAG-файлы Airflow
 ├── src/                   # Исходный код ETL (extract, transform, load)
 ├── tests/                 # Unit-тесты на PySpark
+├── docs/                  # Скриншоты и документация (дашборд)
 ├── clickhouse-config/     # Конфиги ClickHouse (users.xml)
 ├── docker-compose.yml     # Инфраструктура
 ├── Dockerfile             # Образ Airflow с Java и Spark
 ├── .env                   # Секреты (не коммитится)
 └── requirements.txt       # Python-зависимости
 ```
+
+## 📊 Визуализация данных (Metabase)
+
+Для анализа данных мы используем **Metabase**. После того как ETL-пайплайн отработал и загрузил данные в ClickHouse, они автоматически становятся доступны в дашборде.
+
+![Выручка по дням](docs/revenue_chart.png)
+
+**Что на графике:** Динамика ежедневной выручки магазина. Видно, как менялся спрос в течение периода.
+
+### Как запустить дашборд локально:
+1. Запустите все контейнеры: `docker-compose up -d`
+2. Перейдите по адресу: `http://localhost:3000`
+3. Metabase автоматически подключен к ClickHouse (база `Wildberries Data`, таблица `wb_sales`).
 
 **Автор:** Anna Olasyuk
