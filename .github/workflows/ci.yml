@@ -17,4 +17,5 @@ jobs:
         run: docker compose build
 
       - name: Run pytest in container
-        run: docker compose run --rm etl-transform python -m pytest tests/ -v
+        # Запускаем тесты внутри контейнера airflow, где установлены Spark и pytest
+        run: docker compose run --rm airflow python -m pytest tests/ -v
