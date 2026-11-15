@@ -46,6 +46,7 @@ services:
       - ./dags:/opt/airflow/dags
       - ./src:/opt/airflow/src
       - ./data:/opt/airflow/data
+      - ./tests:/opt/airflow/tests 
       - ./webserver_config.py:/opt/airflow/webserver_config.py 
     command: bash -c "airflow db migrate && airflow standalone"
     restart: always
