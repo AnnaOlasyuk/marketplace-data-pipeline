@@ -1,5 +1,7 @@
 # Marketplace Data Pipeline (Airflow + PySpark + ClickHouse)
 
+![CI Tests](https://github.com/AnnaOlasyuk/marketplace-data-pipeline/actions/workflows/ci.yml/badge.svg)
+
 End-to-end ETL-пайплайн для обработки сырых данных маркетплейса Wildberries. Проект демонстрирует навыки построения отказоустойчивых пайплайнов, работы с большими данными и настройки инфраструктуры.
 
 ## Архитектура пайплайна
