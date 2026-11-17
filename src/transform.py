@@ -1,13 +1,14 @@
 """
 Transform-слой пайплайна.
-Читает сырой Parquet, фильтрует мусор и агрегирует данные.
+Читает сырой Parquet, фильтрует мусор, агрегирует данные и добавляет оконные функции.
 """
 
 import logging
 import os
 from datetime import datetime
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as _sum, avg, count
+from pyspark.sql.functions import col, sum as _sum, avg, count, row_number, round as _round
+from pyspark.sql.window import Window
 
 # Настройка логгера
 logging.basicConfig(
@@ -30,7 +31,6 @@ def init_spark():
 
 def read_raw_data(spark, date_str):
     """Чтение сырых данных из Parquet."""
-    # Читаем исходный файл wildberries_sales.parquet (путь исправлен под Docker volume)
     raw_path = "/opt/airflow/data/raw/wildberries_sales.parquet"
     logger.info(f"Чтение данных из: {raw_path}")
     
@@ -39,10 +39,7 @@ def read_raw_data(spark, date_str):
     return df
 
 def validate_and_clean_data(df):
-    """
-    Проверка качества данных (Data Quality).
-    Очищаем данные от аномалий.
-    """
+    """Проверка качества данных (Data Quality)."""
     logger.info("=" * 60)
     logger.info("ЗАПУСК ПРОВЕРКИ КАЧЕСТВА ДАННЫХ (Data Quality)")
     
@@ -65,28 +62,45 @@ def validate_and_clean_data(df):
     return clean_df
 
 def transform_data(df):
-    """Трансформация: группируем по дням и промо-акциям."""
+    """Трансформация: группировка, агрегация и оконные функции."""
     if df.isEmpty():
         logger.warning("Входной DataFrame пуст. Обработка прервана.")
         return None
     
-    logger.info("Запуск агрегации данных по дням и промо-акциям...")
+    logger.info("Запуск агрегации и сложных трансформаций (Window Functions)...")
     
-    processed_df = df.groupBy("dt", "is_promo") \
+    # 1. Базовая агрегация
+    aggregated_df = df.groupBy("dt", "is_promo") \
         .agg(
             _sum("qty").alias("total_qty_sold"),
             _sum(col("price") * col("qty")).alias("total_revenue"),
             avg("price").alias("avg_price"),
             count("nm_id").alias("unique_items")
-        ) \
-        .orderBy("dt", "is_promo")
+        )
     
-    logger.info(f"Агрегация завершена. Получено строк: {processed_df.count()}")
-    return processed_df
+    # 2. Оконная функция: Скользящее среднее выручки за 3 дня (сглаживание тренда)
+    # Берем текущий день и 2 предыдущих
+    window_spec = Window.orderBy("dt").rowsBetween(-2, 0)
+    df_with_trend = aggregated_df.withColumn(
+        "revenue_moving_avg_3d", 
+        _round(avg("total_revenue").over(window_spec), 2)
+    )
+    
+    # 3. Оконная функция: Ранжирование дней по выручке (1 - самый прибыльный)
+    window_rank = Window.orderBy(col("total_revenue").desc())
+    final_df = df_with_trend.withColumn(
+        "revenue_rank", 
+        row_number().over(window_rank)
+    )
+    
+    # Сортируем по дате для красивого вывода
+    final_df = final_df.orderBy("dt", "is_promo")
+    
+    logger.info(f"Трансформация завершена. Получено строк: {final_df.count()}")
+    return final_df
 
 def save_processed_data(df, date_str):
     """Сохранение обработанных данных в Parquet."""
-    # Путь исправлен, чтобы не было ошибки PATH_NOT_FOUND при записи
     processed_path = f"/opt/airflow/processed/aggregated_sales_{date_str}/"
     logger.info(f"Сохранение данных в: {processed_path}")
     
