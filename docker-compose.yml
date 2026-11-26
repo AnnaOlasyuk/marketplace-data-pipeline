@@ -27,6 +27,17 @@ services:
         hard: 262144
     restart: always
 
+  metabase:
+    image: metabase/metabase:latest
+    container_name: marketplace_metabase
+    ports:
+      - "3000:3000" # Metabase будет доступен на http://localhost:3000
+    environment:
+      - MB_DB_TYPE=h2 # Встроенная база данных (для учебного проекта пойдет)
+    volumes:
+      - metabase_data:/metabase-data
+    restart: always
+    
   airflow:
     build: .
     container_name: airflow_standalone
@@ -54,3 +65,4 @@ services:
 volumes:
   postgres_data:
   clickhouse_data:
+  metabase_data:

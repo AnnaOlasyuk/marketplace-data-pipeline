@@ -13,6 +13,9 @@ pydantic>=2.5.0
 pyspark==3.5.0
 pyarrow>=12.0.0
 boto3>=1.28.0
+great_expectations>=0.18.0
+cryptography<42.0.0
+pyOpenSSL==23.2.0
 
 # Тестирование
 pytest>=7.4.0

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
-<yandex>
+<clickhouse>
     <users>
         <default>
-            <password></password>
+            <password>admin</password>  <!-- ВОТ ЗДЕСЬ МЫ ЗАДАЕМ ПАРОЛЬ -->
             <networks>
                 <ip>::/0</ip>
             </networks>
@@ -11,4 +11,4 @@
             <access_management>1</access_management>
         </default>
     </users>
-</yandex>
+</clickhouse>

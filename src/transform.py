@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, sum as _sum, avg, count
+from data_quality import check_data_quality
 
 # Настройка логгера
 logging.basicConfig(
@@ -101,6 +102,11 @@ def main():
         spark = init_spark()
         raw_df = read_raw_data(spark, today)
         clean_df = validate_and_clean_data(raw_df)
+    
+        # НОВЫЙ ШАГ: Проверка через Great Expectations
+        if not check_data_quality(clean_df):
+            raise ValueError("Данные не прошли проверку качества! Пайплайн остановлен.")
+        
         processed_df = transform_data(clean_df)
         
         if processed_df is not None:
