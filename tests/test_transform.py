@@ -52,9 +52,8 @@ def test_validate_and_clean_data_removes_invalid_rows(spark):
     assert "uuid-2" not in remaining_ids
 
 
-# ЭТА ФУНКЦИЯ ТЕПЕРЬ НА СВОЕМ МЕСТЕ (БЕЗ ЛИШНИХ ОТСТУПОВ)
 def test_transform_data_calculates_correct_aggregations(spark):
-    """Тест проверяет, что функция агрегации правильно считает выручку и количество."""
+    """Тест проверяет, что функция агрегации правильно считает выручку, количество и добавляет оконные функции."""
     
     # 1. Создаем тестовые данные (добавлен nm_id!)
     data = [
@@ -64,7 +63,7 @@ def test_transform_data_calculates_correct_aggregations(spark):
     ]
     
     schema = StructType([
-        StructField("nm_id", StringType(), True),    # <-- ДОБАВЛЕНО
+        StructField("nm_id", StringType(), True),
         StructField("dt", StringType(), True),
         StructField("is_promo", LongType(), True),
         StructField("price", DoubleType(), True),
@@ -81,6 +80,11 @@ def test_transform_data_calculates_correct_aggregations(spark):
     
     results = {(row.dt, row.is_promo): row for row in result_df.collect()}
     
+    # Проверка базовых агрегатов
     assert results[("2024-01-01", 0)]["total_qty_sold"] == 3
     assert results[("2024-01-01", 0)]["total_revenue"] == 400.0
     assert results[("2024-01-02", 1)]["total_revenue"] == 500.0
+    
+    # НОВАЯ ПРОВЕРКА: Проверяем наличие колонок, добавленных оконными функциями
+    assert "revenue_moving_avg_3d" in result_df.columns, "Колонка со скользящим средним не найдена!"
+    assert "revenue_rank" in result_df.columns, "Колонка с рангом не найдена!"
